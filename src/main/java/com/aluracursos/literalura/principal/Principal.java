@@ -60,67 +60,84 @@ public class Principal {
         }
     }
 
-    private void buscarLibro() {
+    private DatosGutendex obtenerDatosGutendex() {
         System.out.println("Digite el libro que desea buscar: ");
         String libro = teclado.nextLine();
 
         var respuestaAPI = consumoApi.obtenerDatos(API_URL + "?search=" + libro.replace(" ", "+"));
         if (respuestaAPI.isEmpty()) {
             System.out.println("No se encontró el libro");
+            return null;
         }else {
-            DatosGutendex datosGutendex = conversor.fromJson(respuestaAPI, DatosGutendex.class);
+            return conversor.fromJson(respuestaAPI, DatosGutendex.class);
+        }
+    }
+
+    private void imprimirDatosGutendex(DatosLibro datosLibro) {
+            System.out.println("Libro: " + datosLibro.getTitulo());
+            System.out.println("idiomas: " + datosLibro.getIdiomas());
+            System.out.println("Total de descargas: " + datosLibro.getCantidadDeDescargas());
+
+            List<DatosAutor> datosAutor = datosLibro.getAutores();
+            if (datosAutor != null && !datosAutor.isEmpty()) {
+                System.out.println("Autor: " + datosLibro.getAutores().get(0).getNombre());
+                System.out.println("Año de nacimiento del autor: " + datosLibro.getAutores().get(0).getBirthYear());
+            }else{
+                System.out.println("Autor: ");
+                System.out.println("Año de nacimiento del autor: ");
+            }
+    }
+
+    private void buscarLibro() {
+        DatosGutendex datosGutendex = obtenerDatosGutendex();
+
+        if (datosGutendex != null && datosGutendex.getLibros() != null) {
+
             System.out.println("Total de libros: " + datosGutendex.getCount());
 
             for (DatosLibro datosLibro : datosGutendex.getLibros()) {
-                System.out.println("Libro: " + datosLibro.getTitulo());
-                System.out.println("idiomas: " + datosLibro.getIdiomas());
-                System.out.println("Total de descargas: " + datosLibro.getCantidadDeDescargas());
-
-                List<DatosAutor> datosAutor = datosLibro.getAutores();
-                if (datosAutor != null && !datosAutor.isEmpty()) {
-                    System.out.println("Autor: " + datosLibro.getAutores().get(0).getNombre());
-                    System.out.println("Año de nacimiento del autor: " + datosLibro.getAutores().get(0).getBirthYear());
-                }else{
-                    System.out.println("Autor: ");
-                    System.out.println("Año de nacimiento del autor: ");
-                }
-
-                Autor autor = new Autor();
-
-                if (datosLibro.getAutores() != null && !datosLibro.getAutores().isEmpty()) {
-                    autor = autorRepository.findByNombre(datosLibro.getAutores().get(0).getNombre());
-
-                    if (autor == null) {
-                        autor = new Autor(datosLibro.getAutores().get(0));
-                        try {
-                            autorRepository.save(autor);
-                        }catch (Exception e) {
-                            System.out.println("Error al guardar el autor");
-                        }
-                    }
-                }
-
-                Optional<Libro> libroBuscado = libroRepository.getLibrosById(datosLibro.getId());
-
-                if (libroBuscado.isEmpty()) {
-                    Libro nuevoLibro = new Libro();
-                    if (autor.getNombre() != null) {
-                        nuevoLibro = new Libro(datosLibro, autor);
-                    }else {
-                        nuevoLibro = new Libro(datosLibro, null);
-                    }
-
-                    try {
-                        libroRepository.save(nuevoLibro);
-                    }catch (Exception e) {
-                        System.out.println("Error al guardar el libro: " + e.getMessage());
-                    }
-                }else {
-                    System.out.println("Ya existe el libro con el id: " + datosLibro.getId());
-                    System.out.println("Libro: " + libroBuscado.get().getTitulo() + " - " + libroBuscado.get().getAutor().getNombre());
-                }
+                imprimirDatosGutendex(datosLibro);
+                guardarLibro(datosLibro);
             }
         }
 
     }
+
+    private void guardarLibro(DatosLibro datosLibro) {
+        Autor autor = new Autor();
+
+        if (datosLibro.getAutores() != null && !datosLibro.getAutores().isEmpty()) {
+            autor = autorRepository.findByNombre(datosLibro.getAutores().get(0).getNombre());
+
+            if (autor == null) {
+                autor = new Autor(datosLibro.getAutores().get(0));
+                try {
+                    autorRepository.save(autor);
+                }catch (Exception e) {
+                    System.out.println("Error al guardar el autor");
+                }
+            }
+        }
+
+        Optional<Libro> libroBuscado = libroRepository.getLibrosById(datosLibro.getId());
+
+        if (libroBuscado.isEmpty()) {
+            Libro nuevoLibro = new Libro();
+            if (autor.getNombre() != null) {
+                nuevoLibro = new Libro(datosLibro, autor);
+            }else {
+                nuevoLibro = new Libro(datosLibro, null);
+            }
+
+            try {
+                libroRepository.save(nuevoLibro);
+            }catch (Exception e) {
+                System.out.println("Error al guardar el libro: " + e.getMessage());
+            }
+        }else {
+            System.out.println("Ya existe el libro con el id: " + datosLibro.getId());
+            System.out.println("Libro: " + libroBuscado.get().getTitulo() + " - " + libroBuscado.get().getAutor().getNombre());
+        }
+    }
+
 }
